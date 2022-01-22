@@ -1,0 +1,134 @@
+     1                                  section .text
+     2                                  
+     3                                  
+     4                                  global exstdout
+     5                                  exstdout:       ; explicit stdout (explicit write size)
+     6                                  ; argument rdi for message
+     7                                  ; argument rsi for size
+     8                                  
+     9 00000000 55                      push rbp
+    10 00000001 4889E5                  mov rbp, rsp
+    11                                  
+    12 00000004 4889F2                  mov     rdx, rsi            ; write size, until terminating zero
+    13 00000007 4889FE                  mov     rsi, rdi            ; memory address of message
+    14 0000000A BF01000000              mov     rdi, 1              ; file descriptor for stdout
+    15 0000000F B801000000              mov     rax, 1              ; write
+    16 00000014 0F05                    syscall                
+    17                                  
+    18 00000016 4889EC                  mov rsp, rbp
+    19 00000019 5D                      pop rbp
+    20                                  
+    21 0000001A C3                      ret
+    22                                  
+    23                                  
+    24                                  
+    25                                  global stdout
+    26                                  stdout:
+    27                                  ; argument rdi for message
+    28                                  
+    29 0000001B 55                      push rbp
+    30 0000001C 4889E5                  mov rbp, rsp
+    31                                  
+    32 0000001F E817000000              call strsize   
+    33                                  
+    34 00000024 4889C2                  mov     rdx, rax            ; write size, until terminating zero
+    35 00000027 4889FE                  mov     rsi, rdi            ; memory address of message
+    36 0000002A BF01000000              mov     rdi, 1              ; file descriptor for stdout
+    37 0000002F B801000000              mov     rax, 1              ; write
+    38 00000034 0F05                    syscall                
+    39                                  
+    40 00000036 4889EC                  mov rsp, rbp
+    41 00000039 5D                      pop rbp
+    42                                  
+    43 0000003A C3                      ret
+    44                                  
+    45                                  
+    46                                  global strsize
+    47                                  strsize:
+    48                                  ; argument rdi for memory address of string
+    49                                  
+    50 0000003B 55                      push rbp
+    51 0000003C 4889E5                  mov rbp, rsp
+    52                                  
+    53 0000003F 4154                    push r12        ; callee saved
+    54                                  
+    55 00000041 41BC00000000            mov r12, 0      ; index (length when done)
+    56                                  
+    57                                  ; keep checking for terminating zero
+    58                                  .checkloop:
+    59 00000047 468A1C27                    mov r11b, [rdi+r12]
+    60 0000004B 4180FB00                    cmp r11b, 0
+    61                                  
+    62 0000004F 7405                        je .done
+    63 00000051 49FFC4                      inc r12
+    64 00000054 EBF1                        jmp .checkloop
+    65                                      
+    66                                  .done:
+    67 00000056 4C89E0                      mov rax, r12
+    68                                  
+    69 00000059 415C                        pop r12     ; callee saved
+    70                                  
+    71 0000005B 4889EC                      mov rsp, rbp
+    72 0000005E 5D                          pop rbp
+    73                                  
+    74 0000005F C3                          ret
+    75                                  
+    76                                  
+    77                                  global stdin
+    78                                  stdin:
+    79                                  ; argument rdi for buffer memory address
+    80                                  ; argument rsi for buffer size
+    81                                  
+    82 00000060 55                      push rbp
+    83 00000061 4889E5                  mov rbp, rsp
+    84                                  
+    85 00000064 57                      push rdi ; callee saved
+    86 00000065 56                      push rsi ; callee saved
+    87 00000066 52                      push rdx ; callee saved
+    88                                  
+    89 00000067 4889F2                  mov rdx, rsi                ; buffer size
+    90 0000006A 4889FE                  mov rsi, rdi                ; buffer memory address
+    91 0000006D 4831FF                  xor rdi, rdi                ; file descriptor for stdin
+    92 00000070 4831C0                  xor rax, rax                ; read
+    93 00000073 0F05                    syscall                   
+    94                                  
+    95 00000075 5A                      pop rdx ; callee saved
+    96 00000076 5E                      pop rsi ; callee saved
+    97 00000077 5F                      pop rdi ; callee saved
+    98                                  
+    99 00000078 4889EC                  mov rsp, rbp
+   100 0000007B 5D                      pop rbp
+   101                                  
+   102 0000007C C3                      ret
+   103                                  
+   104                                  
+   105                                  global read
+   106                                  read:
+   107                                  ; argument rdi for file descriptor
+   108                                  ; argument rsi for buffer memory address
+   109                                  ; argument rdx for buffer size
+   110                                  
+   111 0000007D 55                      push rbp
+   112 0000007E 4889E5                  mov rbp, rsp
+   113                                  
+   114 00000081 57                      push rdi ; callee saved
+   115 00000082 56                      push rsi ; callee saved
+   116 00000083 52                      push rdx ; callee saved
+   117                                  
+   118                                  ; rdx in arguments for buffer size
+   119                                  ; rsi in arguments for buffer memory address
+   120                                  ; rdi in arguments for file descriptor
+   121 00000084 4831C0                  xor rax, rax                ; read
+   122 00000087 0F05                    syscall
+   123                                  
+   124 00000089 5A                      pop rdx ; callee saved
+   125 0000008A 5E                      pop rsi ; callee saved
+   126 0000008B 5F                      pop rdi ; callee saved
+   127                                  
+   128 0000008C 4889EC                  mov rsp, rbp
+   129 0000008F 5D                      pop rbp
+   130                                  
+   131 00000090 C3                      ret
+   132                                  
+   133                                  
+   134                                  

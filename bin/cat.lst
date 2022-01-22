@@ -1,0 +1,172 @@
+     1                                  extern stdout
+     2                                  extern exstdout
+     3                                  extern read
+     4                                  
+     5                                  global main
+     6                                  main:
+     7                                  
+     8                                  section .data
+     9                                  ; errors
+    10 00000000 4572726F7220776869-     	.openError 	db 		"Error while opening",10,0
+    10 00000009 6C65206F70656E696E-
+    10 00000012 670A00             
+    11 00000015 496E636F7272656374-     	.usageError db 		"Incorrect usage/syntax",10,0
+    11 0000001E 2075736167652F7379-
+    11 00000027 6E7461780A00       
+    12 0000002D 0A4572726F72207768-     	.readError 	db 		10,"Error while reading",10,0 	; starts with NL because it prints between other texts
+    12 00000036 696C65207265616469-
+    12 0000003F 6E670A00           
+    13                                  ; messages
+    14 00000043 0A5375636365736675-     	.catExit 	db 		10,"Succesfuly exiting cat...",10,0
+    14 0000004C 6C792065786974696E-
+    14 00000055 67206361742E2E2E0A-
+    14 0000005E 00                 
+    15                                  
+    16                                  section .text
+    17                                  ; rdi (command line arg) is argument count
+    18                                  ; rsi (command line arg) is string of arguments: file location with terminating zero
+    19                                  
+    20 00000000 4989FC                  mov r12, rdi		; argc
+    21 00000003 4989F5                  mov r13, rsi 		; argv
+    22                                  
+    23                                  ; check for usage errors 
+    24 00000006 4983FC02                cmp r12, 2  	
+    25 0000000A 7522                    jne .usageerror
+    26                                  
+    27                                  ; open file
+    28 0000000C 498B7D08                mov rdi, [r13+8]	; use second argument, each argument is 8 bytes
+    29 00000010 E866000000              call open
+    30 00000015 4989C6                  mov r14, rax		; save FD to r14
+    31                                  
+    32 00000018 4983FE00                cmp r14, 0
+    33 0000001C 7C24                    jl .openerror
+    34                                  
+    35                                  ; print file
+    36 0000001E 4C89F7                  mov rdi, r14
+    37 00000021 E86A000000              call prtopenf
+    38                                  
+    39 00000026 4883F800                cmp rax, 0
+    40 0000002A 7C2A                    jl .readerror
+    41                                  
+    42                                  ; exit with succes
+    43 0000002C EB3C                    jmp .succes
+    44                                  
+    45                                  .usageerror:
+    46 0000002E 48BF-                   	mov rdi, .usageError
+    46 00000030 [1500000000000000] 
+    47 00000038 E8(00000000)            	call stdout
+    48 0000003D E9AF000000              	jmp exit
+    49                                  
+    50                                  .openerror:
+    51 00000042 48BF-                   	mov rdi, .openError
+    51 00000044 [0000000000000000] 
+    52 0000004C E8(00000000)            	call stdout
+    53 00000051 E99B000000              	jmp exit
+    54                                  
+    55                                  .readerror:
+    56 00000056 48BF-                   	mov rdi, .readError
+    56 00000058 [2D00000000000000] 
+    57 00000060 E8(00000000)            	call stdout
+    58 00000065 E987000000              	jmp exit
+    59                                  
+    60                                  .succes:
+    61 0000006A 48BF-                   	mov rdi, .catExit
+    61 0000006C [4300000000000000] 
+    62 00000074 E8(00000000)            	call stdout
+    63 00000079 EB76                    	jmp exit
+    64                                  
+    65                                  
+    66                                  
+    67                                  open:
+    68                                  
+    69                                  section .data
+    70                                  	.NR_open equ 2
+    71                                  	.O_RDONLY equ 000000q
+    72                                  
+    73                                  section .text
+    74                                  ; rdi is argument file_location
+    75                                  
+    76 0000007B 55                      push rbp
+    77 0000007C 4889E5                  mov rbp, rsp
+    78                                  
+    79                                  ; open with read mode, return file descriptor in rax or error code
+    80 0000007F B802000000              mov rax, .NR_open
+    81 00000084 BE00000000              mov rsi, .O_RDONLY
+    82                                  
+    83 00000089 0F05                    syscall
+    84                                  
+    85 0000008B 4889EC                  mov rsp, rbp
+    86 0000008E 5D                      pop rbp
+    87                                  
+    88 0000008F C3                      ret
+    89                                  
+    90                                  
+    91                                  prtopenf:
+    92                                  
+    93                                  section .data
+    94 0000005F 6400000000000000        	.bufsize dq 100
+    95                                  
+    96                                  section .bss
+    97 00000000 <res 64h>               	.buffer resb 100
+    98                                  
+    99                                  section .text
+   100                                  ; rdi is argument FD
+   101                                  
+   102 00000090 55                      push rbp
+   103 00000091 4889E5                  mov rbp, rsp
+   104                                  
+   105 00000094 4154                    push r12		; callee saved
+   106                                  
+   107 00000096 4989FC                  mov r12, rdi 	; save local file descriptor
+   108                                  
+   109                                  ; seek beginning of the file
+   110 00000099 B808000000              mov rax, 8 		; file lseek
+   111 0000009E 4C89E7                  mov rdi, r12
+   112 000000A1 BE00000000              mov rsi, 0  	; begin of file 
+   113 000000A6 0F05                    syscall
+   114                                  
+   115                                  ; keep printing until call returns 0 read
+   116                                  .prtloop:
+   117                                  ; read buffer
+   118 000000A8 4C89E7                  	mov rdi, r12
+   119 000000AB 48BE-                   	mov rsi, .buffer
+   119 000000AD [0000000000000000] 
+   120 000000B5 488B1425[5F000000]      	mov rdx, [.bufsize]
+   121 000000BD E8(00000000)            	call read
+   122                                  
+   123                                  ; look for errors or end of file
+   124 000000C2 4883F800                	cmp rax, 0
+   125 000000C6 7C1B                    	jl .readerror
+   126 000000C8 7420                    	je .done
+   127                                  	
+   128                                  ; write buffer			
+   129 000000CA 48BF-                   	mov rdi, .buffer    
+   129 000000CC [0000000000000000] 
+   130 000000D4 488B3425[5F000000]      	mov rsi, [.bufsize] 
+   131 000000DC E8(00000000)            	call exstdout
+   132                                  
+   133                                  ; if no error or EOF loop
+   134 000000E1 EBC5                    	jmp .prtloop
+   135                                  
+   136                                  .readerror:
+   137 000000E3 4889EC                  	mov rsp, rbp
+   138 000000E6 5D                      	pop rbp
+   139                                  
+   140 000000E7 415C                    	pop r12		; callee saved
+   141                                  
+   142 000000E9 C3                      	ret
+   143                                  
+   144                                  .done:
+   145 000000EA 4889EC                  	mov rsp, rbp
+   146 000000ED 5D                      	pop rbp
+   147                                  
+   148 000000EE 415C                    	pop r12		; callee saved
+   149                                  
+   150 000000F0 C3                      	ret
+   151                                  
+   152                                  
+   153                                  exit:
+   154                                  
+   155 000000F1 B83C000000              mov rax, 60
+   156 000000F6 BF00000000              mov rdi, 0
+   157 000000FB 0F05                    syscall
